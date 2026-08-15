@@ -5,7 +5,7 @@ Unlike check_btc.py (which tracks one fixed symbol), this is a screener:
 the caller (e.g. via WebSearch against "本日 値下がり率ランキング" /
 "日本株 急落" style queries) finds whatever stocks are crashing *today*,
 without any pre-defined watchlist, and passes them in as JSON. This
-script just validates, thresholds, and logs them.
+script just validates and thresholds them.
 
 Pass hits as a JSON array via --hits, e.g.:
 
@@ -17,14 +17,11 @@ Pass an empty array `--hits '[]'` when the screen found nothing.
 Exits non-zero if any hit's change_pct is at or below THRESHOLD_PCT.
 """
 import argparse
-import csv
 import json
-import os
 import sys
 from datetime import datetime, timezone
 
 THRESHOLD_PCT = -10.0  # day's change <= this value is treated as a crash
-LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "jp_stocks_history.csv")
 
 
 def main():
@@ -39,38 +36,19 @@ def main():
         sys.exit(2)
 
     now = datetime.now(timezone.utc).isoformat()
-    is_new = not os.path.exists(LOG_PATH)
-    crashed = []
-
-    with open(LOG_PATH, "a", newline="") as f:
-        writer = csv.writer(f)
-        if is_new:
-            writer.writerow(["timestamp_utc", "name", "code", "price", "change_pct", "alert", "reason"])
-
-        if not hits:
-            writer.writerow([now, "(no crash found)", "", "", "", False, ""])
-        else:
-            for hit in hits:
-                change_pct = float(hit["change_pct"])
-                is_crash = change_pct <= THRESHOLD_PCT
-                writer.writerow([
-                    now,
-                    hit.get("name", ""),
-                    hit.get("code", ""),
-                    hit.get("price", ""),
-                    change_pct,
-                    is_crash,
-                    hit.get("reason", ""),
-                ])
-                if is_crash:
-                    crashed.append(hit)
 
     if not hits:
         print(f"[{now}] JP stock screen: no candidates found, status=normal")
-    else:
-        for hit in hits:
-            status = "CRASH DETECTED" if float(hit["change_pct"]) <= THRESHOLD_PCT else "normal"
-            print(f"[{now}] {hit.get('name','?')}({hit.get('code','?')}) change={hit['change_pct']}% status={status}")
+        return
+
+    crashed = []
+    for hit in hits:
+        change_pct = float(hit["change_pct"])
+        is_crash = change_pct <= THRESHOLD_PCT
+        status = "CRASH DETECTED" if is_crash else "normal"
+        print(f"[{now}] {hit.get('name', '?')}({hit.get('code', '?')}) change={change_pct}% status={status}")
+        if is_crash:
+            crashed.append(hit)
 
     if crashed:
         sys.exit(1)
