@@ -10,7 +10,7 @@ script just validates and thresholds them.
 Pass hits as a JSON array via --hits, e.g.:
 
   python3 screen_jp_stocks.py --hits '[
-    {"name": "○○ホールディングス", "code": "1234", "price": 980, "change_pct": -18.2, "reason": "下方修正"}
+    {"name": "○○ホールディングス", "code": "1234", "price": 980, "change_pct": -28.4, "reason": "粉飾決算発覚"}
   ]'
 
 Pass an empty array `--hits '[]'` when the screen found nothing.
@@ -21,7 +21,12 @@ import json
 import sys
 from datetime import datetime, timezone
 
-THRESHOLD_PCT = -10.0  # day's change <= this value is treated as a crash
+THRESHOLD_PCT = -25.0  # day's change <= this value is treated as a crash
+# High bar on purpose: a single small/mid-cap stock dropping -10~20% on an
+# earnings miss happens on the Tokyo exchange most trading days and isn't
+# newsworthy. This screener should only fire for genuinely extreme,
+# rare-even-for-a-single-stock moves. Market-wide anomalies are covered
+# separately by check_nikkei225.py.
 
 
 def main():
